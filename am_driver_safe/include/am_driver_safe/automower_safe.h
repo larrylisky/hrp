@@ -9,7 +9,8 @@
 
 #include <ros/ros.h>
 #include <boost/shared_ptr.hpp>
-#include <geometry_msgs/PoseStamped.h>
+//#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TransformStamped.h>
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
 #include <tf/transform_broadcaster.h>
@@ -175,7 +176,8 @@ private:
     double lin_vel;
     double ang_vel;
 
-    geometry_msgs::PoseStamped robot_pose;
+    //geometry_msgs::PoseStamped robot_pose;
+    geometry_msgs::TransformStamped robot_trans;
 
     double xpos, ypos, yaw;
     double wanted_lv, wanted_rv;

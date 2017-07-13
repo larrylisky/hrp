@@ -145,7 +145,8 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, double anUpdateRate)
 
 
     odom_pub = nh.advertise<nav_msgs::Odometry>("odom", 1);
-    pose_pub = nh.advertise<geometry_msgs::PoseStamped>("pose", 1);
+   // pose_pub = nh.advertise<geometry_msgs::PoseStamped>("pose", 1);
+    pose_pub = nh.advertise<geometry_msgs::TransformStamped>("pose", 1);
 
     encoder_pub = nh.advertise<am_driver::WheelEncoder>("wheel_encoder", 1);
     current_pub = nh.advertise<am_driver::WheelCurrent>("wheel_current", 1);
@@ -162,9 +163,15 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, double anUpdateRate)
     ROS_INFO("Service /tif_command.");
 
     // Initialize the intial pose
+#if 0
     robot_pose.pose.position.x = 0.0;
     robot_pose.pose.position.y = 0.0;
     robot_pose.pose.position.z = 0.0;
+#else
+    robot_trans.transform.translation.x = 0.0;
+    robot_trans.transform.translation.y = 0.0;
+    robot_trans.transform.translation.z = 0.0;
+#endif
 
     xpos = 0.0;
     ypos = 0.0;
@@ -177,13 +184,27 @@ AutomowerSafe::AutomowerSafe(const ros::NodeHandle& nodeh, double anUpdateRate)
     requestedMode = MODE_MANUAL;
 
     tf::Quaternion q = tf::createQuaternionFromYaw(yaw);
+#if 0
     robot_pose.pose.orientation.x = q.x();
     robot_pose.pose.orientation.y = q.y();
     robot_pose.pose.orientation.z = q.z();
     robot_pose.pose.orientation.w = q.w();
+#else
+    robot_trans.transform.rotation.x = q.x();
+    robot_trans.transform.rotation.y = q.y();
+    robot_trans.transform.rotation.z = q.z();
+    robot_trans.transform.rotation.w = q.w();
+#endif
 
+#if 0
     robot_pose.header.frame_id = "base_link";
     robot_pose.header.stamp = ros::Time::now();
+#else
+    robot_trans.header.frame_id = "odom";
+    robot_trans.child_frame_id = "base_link";
+    robot_trans.header.stamp = ros::Time::now();
+#endif
+
 
     imuOffset = 0.0;
 
@@ -1499,6 +1520,7 @@ bool AutomowerSafe::update(ros::Duration dt)
 
     // ROS_INFO("Automower::pos: dt=%f xpos=%f, ypos=%f", (dt.toSec()), (float)xpos, (float)ypos);
 
+#if 0
     // Set this into the pose
     robot_pose.pose.position.x = xpos;
     robot_pose.pose.position.y = ypos;
@@ -1510,15 +1532,41 @@ bool AutomowerSafe::update(ros::Duration dt)
     robot_pose.pose.orientation.w = qyaw.w();
 
     // Publish the pose
-    pose_pub.publish(robot_pose);
+    pose_pub.publish(robot_pose); 
+#else
+    // Set this into the transform
+    robot_trans.transform.translation.x = xpos;
+    robot_trans.transform.translation.y = ypos;
 
+    tf::Quaternion qyaw = tf::createQuaternionFromYaw(yaw);
+    robot_trans.transform.rotation.x = qyaw.x();
+    robot_trans.transform.rotation.y = qyaw.y();
+    robot_trans.transform.rotation.z = qyaw.z();
+    robot_trans.transform.rotation.w = qyaw.w();
+
+    // Publish the transform
+    pose_pub.publish(robot_trans);
+#endif
+
+#if 0
     // Calculate the TF from the pose...
     tf::Transform transform;
+
     transform.setOrigin(
         tf::Vector3(robot_pose.pose.position.x, robot_pose.pose.position.y, robot_pose.pose.position.z));
     tf::Quaternion q;
     tf::quaternionMsgToTF(robot_pose.pose.orientation, q);
     transform.setRotation(q);
+#else
+    // Calculate the TF from the pose...
+    tf::Transform transform;
+
+    transform.setOrigin(
+        tf::Vector3(robot_trans.transform.translation.x, robot_trans.transform.translation.y, robot_trans.transform.translation.z));
+    tf::Quaternion q;
+    tf::quaternionMsgToTF(robot_trans.transform.rotation, q);
+    transform.setRotation(q);
+#endif
 
 
     	
@@ -1535,11 +1583,17 @@ bool AutomowerSafe::update(ros::Duration dt)
     odom.child_frame_id = "base_link";
 
     // Set the position
+#if 0
     odom.pose.pose.position.x = robot_pose.pose.position.x;
     odom.pose.pose.position.y = robot_pose.pose.position.y;
     odom.pose.pose.position.z = robot_pose.pose.position.z;
     odom.pose.pose.orientation = robot_pose.pose.orientation;
-
+#else
+    odom.pose.pose.position.x = robot_trans.transform.translation.x;
+    odom.pose.pose.position.y = robot_trans.transform.translation.y;
+    odom.pose.pose.position.z = robot_trans.transform.translation.z;
+    odom.pose.pose.orientation = robot_trans.transform.rotation;
+#endif
     // Set the velocity
     odom.twist.twist.linear.x = vx;
     odom.twist.twist.linear.y = vy;
